@@ -73,7 +73,7 @@ export async function GET(
       reportData
     );
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as any, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="Emotional_Report_${id}.pdf"`,
