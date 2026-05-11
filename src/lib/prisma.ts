@@ -2,10 +2,22 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ["query"],
-  });
+// Prevent initialization during Vercel's static build step where DATABASE_URL is missing
+const createPrismaClient = () => {
+  if (typeof window === "undefined" && !process.env.DATABASE_URL) {
+    // Return a dummy proxy during build to prevent crashes
+    return new Proxy({} as PrismaClient, {
+      get() {
+        return () => Promise.resolve([]);
+      }
+    });
+  }
+  return new PrismaClient({ log: ["query"] });
+};
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma = globalForPrisma.prisma || createPrismaClient();
+
+if (process.env.NODE_ENV !== "production" && process.env.DATABASE_URL) {
+  globalForPrisma.prisma = prisma;
+}
+
