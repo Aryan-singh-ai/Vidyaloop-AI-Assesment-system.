@@ -14,7 +14,7 @@ export async function POST(req: Request) {
         name: studentInfo.fullName,
         school: studentInfo.schoolName,
         grade: studentInfo.grade,
-        age: studentInfo.age,
+        age: parseInt(studentInfo.age, 10),
       },
       create: {
         id: userId,
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
         name: studentInfo.fullName,
         school: studentInfo.schoolName,
         grade: studentInfo.grade,
-        age: studentInfo.age,
+        age: parseInt(studentInfo.age, 10),
       },
     });
 

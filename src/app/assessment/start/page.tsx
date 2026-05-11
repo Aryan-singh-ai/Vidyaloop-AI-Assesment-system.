@@ -23,7 +23,7 @@ const formSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   schoolName: z.string().min(2, { message: "School name is required." }),
   grade: z.string().min(1, { message: "Class/Grade is required." }),
-  age: z.coerce.number().min(5).max(100),
+  age: z.string().min(1, { message: "Age is required." }),
   email: z.string().email({ message: "Invalid email address." }),
 });
 
@@ -31,7 +31,7 @@ interface FormValues {
   fullName: string;
   schoolName: string;
   grade: string;
-  age: number;
+  age: string;
   email: string;
 }
 
@@ -45,10 +45,11 @@ export default function StudentInfoPage() {
       fullName: "",
       schoolName: "",
       grade: "",
-      age: 0,
+      age: "",
       email: "",
     },
   });
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);

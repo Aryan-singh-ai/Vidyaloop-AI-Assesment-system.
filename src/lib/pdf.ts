@@ -91,12 +91,12 @@ export async function generatePDFReport(
               <p class="content-text">${analysis.summary}</p>
 
               <div class="section-label">Strengths</div>
-              ${analysis.strengths.map(s => `
+              ${analysis.strengths.map((s: string) => `
                 <div class="list-item"><span class="bullet">•</span> <span>${s}</span></div>
               `).join("")}
 
               <div class="section-label">Challenges</div>
-              ${analysis.challenges.map(c => `
+              ${analysis.challenges.map((c: string) => `
                 <div class="list-item"><span class="bullet">○</span> <span>${c}</span></div>
               `).join("")}
 
@@ -107,7 +107,7 @@ export async function generatePDFReport(
 
               <div class="section-label">Action Steps</div>
               <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                ${analysis.actionSteps.map((step, i) => `
+                ${analysis.actionSteps.map((step: string, i: number) => `
                   <div class="action-card">
                     <div class="action-num">${i + 1}</div>
                     <div style="font-weight: 600; font-size: 14px;">${step}</div>
@@ -140,12 +140,12 @@ export async function generatePDFReport(
             </div>
             <div>
               <div class="section-label">Strongest Areas</div>
-              ${aiReport.strengths.map(s => `
+              ${aiReport.strengths.map((s: string) => `
                 <div class="list-item" style="margin-bottom: 15px;"><span class="bullet" style="color: #10b981;">✓</span> <span style="font-weight: 600;">${s}</span></div>
               `).join("")}
 
               <div class="section-label" style="margin-top: 30px;">Growth Areas</div>
-              ${aiReport.challenges.map(c => `
+              ${aiReport.challenges.map((c: string) => `
                 <div class="list-item" style="margin-bottom: 15px;"><span class="bullet" style="color: #f59e0b;">→</span> <span style="font-weight: 600;">${c}</span></div>
               `).join("")}
             </div>
@@ -156,7 +156,7 @@ export async function generatePDFReport(
 
           <div class="section-label">Global Action Steps</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            ${aiReport.actionSteps.map((step, i) => `
+            ${aiReport.actionSteps.map((step: string, i: number) => `
               <div class="action-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                 <div class="action-num" style="background: #0f172a;">${i + 1}</div>
                 <div style="font-weight: 600; font-size: 13px;">${step}</div>
