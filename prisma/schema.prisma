@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String       @id // Clerk User ID
+  email         String       @unique
+  name          String?
+  school        String?
+  grade         String?
+  age           Int?
+  role          Role         @default(STUDENT)
+  assessments   Assessment[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+model Assessment {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  overallScore    Float
+  dimensionScores DimensionScore[]
+  responses       Response[]
+  report          GeneratedReport?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+model Response {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionId   String
+  dimension    String
+  value        Int // 1-5
+  isReversed   Boolean    @default(false)
+
+  @@index([assessmentId])
+}
+
+model DimensionScore {
+  id             String     @id @default(cuid())
+  assessmentId   String
+  assessment     Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  dimension      String
+  score          Float
+  classification String // Emerging, Developing, Strong, Standout
+  maxScore       Float      @default(40)
+
+  @@index([assessmentId])
+}
+
+model GeneratedReport {
+  id                String     @id @default(cuid())
+  assessmentId      String     @unique
+  assessment        Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  summary           String     @db.Text
+  strengths         String[] // Global strengths
+  challenges        String[] // Global challenges
+  improvementAdvice String     @db.Text
+  actionSteps       String[] // Global action steps
+  dimensions        Json? // NEW: Per-dimension detailed report data
+  pdfUrl            String?
+  createdAt         DateTime   @default(now())
+}
