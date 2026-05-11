@@ -1,9 +1,16 @@
 import OpenAI from "openai";
 import { ScoreResult } from "./scoring";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to prevent Vercel static build crashes
+let openaiInstance: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!openaiInstance) {
+    openaiInstance = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
+    });
+  }
+  return openaiInstance;
+};
 
 export interface DimensionAnalysis {
   summary: string;
@@ -83,7 +90,7 @@ export async function generateAIReport(
   `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: "You are a specialized AI for emotional intelligence analysis. You generate multi-page, detailed psychological reports for students." },
