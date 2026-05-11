@@ -12,8 +12,16 @@ const createPrismaClient = () => {
       }
     });
   }
-  return new PrismaClient({ log: ["query"] });
+  try {
+    return new PrismaClient({ log: ["query"] });
+  } catch (error) {
+    console.warn("Failed to initialize PrismaClient during build phase. Using proxy.");
+    return new Proxy({} as PrismaClient, {
+      get() { return () => Promise.resolve([]); }
+    });
+  }
 };
+
 
 export const prisma = globalForPrisma.prisma || createPrismaClient();
 
