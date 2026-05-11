@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateDimensionScores, calculateOverallBalance } from "@/lib/scoring";
 import { generateAIReport } from "@/lib/ai";
+
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const { studentInfo, responses } = await req.json();

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Brain, Sparkles, Database, BarChart, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { QUESTIONS } from "@/lib/questions";
 
 const STEPS = [
   { icon: Database, text: "Saving responses to secure database...", duration: 1500 },
@@ -41,12 +42,6 @@ export default function ProcessingPage() {
       
       // Convert responses to the format expected by the API
       // { questionId: string, dimension: string, value: number }
-      // We need to fetch the questions to get the dimensions, but wait, 
-      // the local state 'responses' is Record<string, number> (questionId -> value)
-      // I should check if I can get dimensions here. 
-      // Actually, let's look at the QUESTIONS in lib/questions.ts
-      
-      const { QUESTIONS } = await import("@/lib/questions");
       const responses = Object.entries(responsesRaw).map(([id, value]) => {
         const q = QUESTIONS.find(q => q.id === id);
         return {
