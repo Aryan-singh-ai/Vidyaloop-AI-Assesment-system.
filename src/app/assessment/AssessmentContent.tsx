@@ -57,15 +57,9 @@ export default function AssessmentContent() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // In a real app, we would send this to the server API
-    // For this demo, we'll store responses and redirect to a processing page
+    // Store responses in localStorage so the processing page can pick them up
     localStorage.setItem("assessmentResponses", JSON.stringify(responses));
-    
-    // Simulate API call
-    setTimeout(() => {
-      router.push("/assessment/processing");
-    }, 2000);
+    router.push("/assessment/processing");
   };
 
   if (!studentInfo) return null;
@@ -117,7 +111,7 @@ export default function AssessmentContent() {
                   </Badge>
                   
                   <h3 className="text-2xl md:text-3xl font-semibold leading-tight text-zinc-800 dark:text-zinc-100">
-                    "{currentQuestion.text}"
+                    &ldquo;{currentQuestion.text}&rdquo;
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">

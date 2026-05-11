@@ -181,7 +181,8 @@ export default function AdminContent() {
                     <th className="px-8 py-4">Balance Score</th>
                     <th className="px-8 py-4">Last Assessment</th>
                     <th className="px-8 py-4">Status</th>
-                    <th className="px-8 py-4">Action</th>
+                    <th className="px-8 py-4">Download</th>
+                    <th className="px-8 py-4">View</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -215,6 +216,24 @@ export default function AdminContent() {
                       </td>
                       <td className="px-8 py-6">
                         <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-emerald-200">Completed</Badge>
+                      </td>
+                      <td className="px-8 py-6">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="rounded-xl h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const link = document.createElement('a');
+                            link.href = `/api/report/pdf/${assessment.id}`;
+                            link.download = `Report_${assessment.user.name || 'Student'}_${assessment.id.substring(0, 8)}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
                       </td>
                       <td className="px-8 py-6">
                         <Button variant="ghost" size="icon" className="rounded-xl" asChild>

@@ -105,7 +105,12 @@ export default function ReportContent({ params }: { params: Promise<{ id: string
             <Button 
               className="flex-1 md:flex-none rounded-xl h-12 gap-2 bg-primary"
               onClick={() => {
-                window.open(`/api/report/pdf/${resolvedParams.id}`, '_blank');
+                const link = document.createElement('a');
+                link.href = `/api/report/pdf/${resolvedParams.id}`;
+                link.download = `Emotional_Report_${resolvedParams.id.substring(0, 8)}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
               }}
             >
               <Download className="w-4 h-4" /> Download PDF

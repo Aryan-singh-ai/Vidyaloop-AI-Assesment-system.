@@ -1,190 +1,341 @@
+import path from "path";
 import { ScoreResult } from "./scoring";
-import { AIReportData } from "./ai";
+
+// Color palette
+const INDIGO = "#6366f1";
+const DARK = "#0f172a";
+const SLATE = "#334155";
+const MUTED = "#94a3b8";
+const LIGHT_BG = "#f8fafc";
+const EMERALD = "#10b981";
+const AMBER = "#f59e0b";
+const WHITE = "#ffffff";
+
+function drawPageHeader(doc: any, title: string, subtitle: string) {
+  doc.rect(0, 0, doc.page.width, 80).fill(WHITE);
+  doc
+    .moveTo(40, 78)
+    .lineTo(doc.page.width - 40, 78)
+    .lineWidth(2)
+    .strokeColor(INDIGO)
+    .stroke();
+
+  doc.fillColor(INDIGO).fontSize(18).font("Helvetica-Bold").text("Vidyaloop AI", 40, 24);
+  doc
+    .fillColor(MUTED)
+    .fontSize(11)
+    .font("Helvetica")
+    .text(subtitle, 0, 32, { align: "right", width: doc.page.width - 40 });
+
+  doc.fillColor(DARK).fontSize(26).font("Helvetica-Bold").text(title, 40, 100);
+  doc
+    .moveTo(40, 132)
+    .lineTo(doc.page.width - 40, 132)
+    .lineWidth(1)
+    .strokeColor("#e2e8f0")
+    .stroke();
+}
+
+function drawSectionLabel(doc: any, label: string, yOverride?: number) {
+  const yPos = yOverride ?? doc.y + 18;
+  doc
+    .fillColor(INDIGO)
+    .fontSize(10)
+    .font("Helvetica-Bold")
+    .text(label.toUpperCase(), 40, yPos, { characterSpacing: 1.5 });
+  doc.moveDown(0.3);
+}
+
+function drawBulletList(doc: any, items: string[], bullet = "•", color = INDIGO) {
+  items.forEach((item: string) => {
+    const startY = doc.y;
+    doc.fillColor(color).fontSize(14).font("Helvetica-Bold").text(bullet, 40, startY, { width: 20 });
+    doc
+      .fillColor(SLATE)
+      .fontSize(12)
+      .font("Helvetica")
+      .text(item, 65, startY, { width: doc.page.width - 105 });
+    doc.moveDown(0.4);
+  });
+}
+
+function drawAdviceBox(doc: any, text: string) {
+  const boxY = doc.y + 10;
+  const textWidth = doc.page.width - 120;
+  const textHeight = doc.heightOfString(text, { width: textWidth });
+  const boxHeight = textHeight + 30;
+
+  doc.rect(40, boxY, doc.page.width - 80, boxHeight).fillAndStroke(LIGHT_BG, "#e2e8f0");
+  doc.rect(40, boxY, 5, boxHeight).fill(INDIGO);
+  doc
+    .fillColor(SLATE)
+    .fontSize(12)
+    .font("Helvetica-Oblique")
+    .text(text, 65, boxY + 15, { width: textWidth });
+  doc.y = boxY + boxHeight + 15;
+}
+
+function drawActionSteps(doc: any, steps: string[]) {
+  steps.forEach((step: string, i: number) => {
+    const stepY = doc.y;
+    doc.circle(55, stepY + 10, 12).fill(INDIGO);
+    doc.fillColor(WHITE).fontSize(10).font("Helvetica-Bold").text(`${i + 1}`, 49, stepY + 5);
+    const textWidth = doc.page.width - 120;
+    const textH = doc.heightOfString(step, { width: textWidth }) + 16;
+    doc.rect(78, stepY, textWidth + 10, textH).fill("#f1f5f9");
+    doc.fillColor(DARK).fontSize(12).font("Helvetica-Bold").text(step, 88, stepY + 8, { width: textWidth });
+    doc.y = stepY + textH + 8;
+  });
+}
+
+function drawFooter(doc: any, userName: string) {
+  const footerY = doc.page.height - 50;
+  doc
+    .moveTo(40, footerY - 10)
+    .lineTo(doc.page.width - 40, footerY - 10)
+    .lineWidth(0.5)
+    .strokeColor("#e2e8f0")
+    .stroke();
+  doc
+    .fillColor(MUTED)
+    .fontSize(10)
+    .font("Helvetica")
+    .text(
+      `Vidyaloop Emotional Balance Assessment  •  Prepared for ${userName}`,
+      40,
+      footerY,
+      { align: "center", width: doc.page.width - 80 }
+    );
+}
+
+const DIMENSION_PAGES = [
+  { key: "STRESS_HANDLING", title: "Stress Handling" },
+  { key: "EMOTIONAL_REGULATION", title: "Emotional Regulation" },
+  { key: "RESILIENCE_RECOVERY", title: "Resilience & Recovery" },
+  { key: "EMOTIONAL_AWARENESS", title: "Emotional Awareness" },
+  { key: "SOCIAL_EMOTIONAL_COMFORT", title: "Social & Emotional Comfort" },
+];
 
 export async function generatePDFReport(
   userName: string,
   dimensionScores: ScoreResult[],
   aiReport: any
 ): Promise<Buffer> {
-  let browser;
-  
-  if (process.env.VERCEL) {
-    const chromium = require("@sparticuz/chromium");
-    const puppeteer = require("puppeteer-core");
-    
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    });
-  } else {
-    const puppeteer = require("puppeteer");
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-  }
+  // Move dynamic requires inside the function to avoid build-time evaluation issues with Turbopack
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const PDFDocument = require("pdfkit");
+  const pdfkitRoot = path.dirname(require.resolve("pdfkit/package.json"));
 
-  const page = await browser.newPage();
+  return new Promise((resolve, reject) => {
+    try {
+      // Ensure PDFKit can find its own AFM font data regardless of Next.js cwd
+      process.env.PDFKIT_FONT_PATH = path.join(pdfkitRoot, "js", "data");
 
-  const dimensionPages = [
-    { key: "STRESS_HANDLING", title: "Stress Handling" },
-    { key: "EMOTIONAL_REGULATION", title: "Emotional Regulation" },
-    { key: "RESILIENCE_RECOVERY", title: "Resilience & Recovery" },
-    { key: "EMOTIONAL_AWARENESS", title: "Emotional Awareness" },
-    { key: "SOCIAL_EMOTIONAL_COMFORT", title: "Social & Emotional Comfort" },
-  ];
+      const doc = new PDFDocument({
+        size: "A4",
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        bufferPages: true,
+        autoFirstPage: true,
+      });
 
-  // Create a beautiful multi-page HTML template
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; color: #1e293b; line-height: 1.6; }
-          .page { height: 297mm; width: 210mm; padding: 30mm; box-sizing: border-box; page-break-after: always; position: relative; }
-          .header { border-bottom: 2px solid #6366f1; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-          .logo { color: #6366f1; font-size: 24px; font-weight: bold; }
-          .title { font-size: 32px; font-weight: 800; margin-bottom: 10px; color: #0f172a; }
-          .dimension-title { font-size: 28px; font-weight: 800; color: #4338ca; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-          .divider { height: 2px; background: #e2e8f0; margin-bottom: 30px; }
-          .section-label { font-size: 14px; font-weight: 900; color: #6366f1; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; margin-top: 35px; }
-          .content-text { font-size: 16px; color: #334155; text-align: justify; }
-          .list-item { margin-bottom: 12px; display: flex; align-items: start; font-size: 15px; }
-          .bullet { color: #6366f1; margin-right: 15px; font-weight: bold; font-size: 20px; line-height: 1; }
-          .advice-box { background: #f8fafc; border-radius: 16px; padding: 25px; border-left: 6px solid #6366f1; margin-top: 20px; }
-          .action-card { background: #f1f5f9; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }
-          .action-num { background: #6366f1; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; }
-          .footer { position: absolute; bottom: 30mm; left: 30mm; right: 30mm; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-          .snapshot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-          .overall-score { font-size: 72px; font-weight: 900; color: #6366f1; margin: 20px 0; }
-          @media print { .page { page-break-after: always; } }
-        </style>
-      </head>
-      <body>
-        ${dimensionPages.map((dim) => {
-          const analysis = aiReport.dimensions?.[dim.key] || {
-            summary: "Analysis pending...",
-            strengths: [],
-            challenges: [],
-            improvementAdvice: "Keep growing.",
-            actionSteps: []
-          };
-          const score = dimensionScores.find(s => s.dimension === dim.key);
+      const chunks: Buffer[] = [];
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
 
-          return `
-            <div class="page">
-              <div class="header">
-                <div class="logo">Vidyaloop AI</div>
-                <div style="font-size: 14px; font-weight: 600; color: #64748b;">${dim.title} • Page Analysis</div>
-              </div>
-              
-              <div class="dimension-title">${dim.title}</div>
-              <div style="font-size: 18px; font-weight: 600; color: #64748b; margin-bottom: 30px;">
-                Current Score: ${score?.score}/${score?.maxScore} (${score?.classification})
-              </div>
-              <div class="divider"></div>
+      const overallScore =
+        aiReport.overallScore ??
+        dimensionScores.reduce((a, c) => a + c.percentage, 0) / dimensionScores.length;
 
-              <div class="section-label">Summary</div>
-              <p class="content-text">${analysis.summary}</p>
+      // ─── COVER PAGE ──────────────────────────────────────────────────────────
+      doc.rect(0, 0, doc.page.width, 300).fill(INDIGO);
 
-              <div class="section-label">Strengths</div>
-              ${analysis.strengths.map((s: string) => `
-                <div class="list-item"><span class="bullet">•</span> <span>${s}</span></div>
-              `).join("")}
+      doc.fillColor(WHITE).fontSize(36).font("Helvetica-Bold").text("Vidyaloop AI", 60, 80);
+      doc
+        .fillColor("#ffffffb3")
+        .fontSize(16)
+        .font("Helvetica")
+        .text("Emotional Balance Assessment Report", 60, 128);
+      doc
+        .fillColor(WHITE)
+        .fontSize(22)
+        .font("Helvetica-Bold")
+        .text(`Prepared for: ${userName}`, 60, 180);
+      doc
+        .fillColor("#ffffffb3")
+        .fontSize(14)
+        .font("Helvetica")
+        .text(
+          `Generated: ${new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}`,
+          60,
+          216
+        );
 
-              <div class="section-label">Challenges</div>
-              ${analysis.challenges.map((c: string) => `
-                <div class="list-item"><span class="bullet">○</span> <span>${c}</span></div>
-              `).join("")}
+      // Score badge
+      doc.rect(60, 260, 200, 60).fill("#ffffff26");
+      doc
+        .fillColor(WHITE)
+        .fontSize(11)
+        .font("Helvetica-Bold")
+        .text("OVERALL BALANCE SCORE", 72, 272, { characterSpacing: 0.8 });
+      doc
+        .fillColor(WHITE)
+        .fontSize(28)
+        .font("Helvetica-Bold")
+        .text(`${Math.round(overallScore)}%`, 72, 290);
 
-              <div class="section-label">Improvement Advice</div>
-              <div class="advice-box">
-                <p style="margin:0; font-size: 15px; font-weight: 500;">${analysis.improvementAdvice}</p>
-              </div>
+      // Summary section on cover
+      doc.y = 340;
+      doc
+        .fillColor(DARK)
+        .fontSize(14)
+        .font("Helvetica")
+        .text(aiReport.summary || "", 60, doc.y, { width: doc.page.width - 120, lineGap: 4 });
 
-              <div class="section-label">Action Steps</div>
-              <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                ${analysis.actionSteps.map((step: string, i: number) => `
-                  <div class="action-card">
-                    <div class="action-num">${i + 1}</div>
-                    <div style="font-weight: 600; font-size: 14px;">${step}</div>
-                  </div>
-                `).join("")}
-              </div>
+      drawFooter(doc, userName);
 
-              <div class="footer">
-                Vidyaloop Emotional Balance Assessment • Prepared for ${userName}
-              </div>
-            </div>
-          `;
-        }).join("")}
+      // ─── DIMENSION PAGES ─────────────────────────────────────────────────────
+      DIMENSION_PAGES.forEach(({ key, title }) => {
+        doc.addPage();
 
-        <!-- FINAL PAGE: SNAPSHOT -->
-        <div class="page">
-          <div class="header">
-            <div class="logo">Vidyaloop AI</div>
-            <div style="font-size: 14px; font-weight: 600; color: #64748b;">Final Snapshot</div>
-          </div>
+        const analysis = aiReport.dimensions?.[key] ?? {
+          summary: "Analysis pending for this dimension.",
+          strengths: [],
+          challenges: [],
+          improvementAdvice: "Keep reflecting on your emotional patterns.",
+          actionSteps: [],
+        };
 
-          <div class="title">Overall Emotional Balance</div>
-          <p style="color: #64748b; font-size: 18px; margin-bottom: 40px;">Consolidated assessment results and final recommendations.</p>
-          
-          <div class="snapshot-grid">
-            <div>
-              <div class="section-label">Your Balance Score</div>
-              <div class="overall-score">${aiReport.overallScore || dimensionScores.reduce((acc, curr) => acc + curr.percentage, 0) / dimensionScores.length}%</div>
-              <p class="content-text" style="font-weight: 500; color: #475569;">${aiReport.summary}</p>
-            </div>
-            <div>
-              <div class="section-label">Strongest Areas</div>
-              ${aiReport.strengths.map((s: string) => `
-                <div class="list-item" style="margin-bottom: 15px;"><span class="bullet" style="color: #10b981;">✓</span> <span style="font-weight: 600;">${s}</span></div>
-              `).join("")}
+        const score = dimensionScores.find((s: any) => s.dimension === key);
+        const pct = score ? Math.round((score.score / score.maxScore) * 100) : 0;
 
-              <div class="section-label" style="margin-top: 30px;">Growth Areas</div>
-              ${aiReport.challenges.map((c: string) => `
-                <div class="list-item" style="margin-bottom: 15px;"><span class="bullet" style="color: #f59e0b;">→</span> <span style="font-weight: 600;">${c}</span></div>
-              `).join("")}
-            </div>
-          </div>
+        drawPageHeader(doc, title, `${title} • Dimension Analysis`);
 
-          <div class="section-label" style="margin-top: 50px;">Recommended Focus Areas</div>
-          <p class="content-text">${aiReport.improvementAdvice}</p>
+        doc
+          .fillColor(MUTED)
+          .fontSize(13)
+          .font("Helvetica")
+          .text(
+            `Score: ${score?.score ?? 0} / ${score?.maxScore ?? 40}  •  ${score?.classification ?? "N/A"}  •  ${pct}%`,
+            40,
+            148
+          );
 
-          <div class="section-label">Global Action Steps</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            ${aiReport.actionSteps.map((step: string, i: number) => `
-              <div class="action-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                <div class="action-num" style="background: #0f172a;">${i + 1}</div>
-                <div style="font-weight: 600; font-size: 13px;">${step}</div>
-              </div>
-            `).join("")}
-          </div>
+        // Progress bar
+        const barY = 170;
+        doc.rect(40, barY, doc.page.width - 80, 8).fill("#e2e8f0");
+        doc.rect(40, barY, (doc.page.width - 80) * (pct / 100), 8).fill(INDIGO);
+        doc.y = barY + 24;
 
-          <div class="advice-box" style="margin-top: 50px; background: #6366f1; border: none; color: white;">
-            <h4 style="margin: 0 0 10px 0; font-size: 18px;">A Note from Vidyaloop AI</h4>
-            <p style="margin:0; opacity: 0.9; font-size: 15px;">Remember, emotional intelligence is a journey, not a destination. These results are a starting point for self-discovery and growth. Keep reflecting, keep learning, and keep growing.</p>
-          </div>
+        drawSectionLabel(doc, "Summary");
+        doc
+          .fillColor(SLATE)
+          .fontSize(12)
+          .font("Helvetica")
+          .text(analysis.summary, 40, doc.y, { width: doc.page.width - 80, lineGap: 3 });
+        doc.moveDown(0.8);
 
-          <div class="footer">
-            Vidyaloop Emotional Balance Assessment • Prepared for ${userName}
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+        if (analysis.strengths?.length > 0) {
+          drawSectionLabel(doc, "Key Strengths");
+          drawBulletList(doc, analysis.strengths, "•", EMERALD);
+          doc.moveDown(0.4);
+        }
 
-  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
-  
-  const pdfBuffer = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    margin: { top: "0", bottom: "0", left: "0", right: "0" } // Managed via CSS padding
+        if (analysis.challenges?.length > 0) {
+          drawSectionLabel(doc, "Growth Areas");
+          drawBulletList(doc, analysis.challenges, "○", AMBER);
+          doc.moveDown(0.4);
+        }
+
+        if (analysis.improvementAdvice) {
+          drawSectionLabel(doc, "Improvement Advice");
+          drawAdviceBox(doc, analysis.improvementAdvice);
+        }
+
+        if (analysis.actionSteps?.length > 0) {
+          drawSectionLabel(doc, "Action Steps");
+          drawActionSteps(doc, analysis.actionSteps);
+        }
+
+        drawFooter(doc, userName);
+      });
+
+      // ─── FINAL SNAPSHOT PAGE ─────────────────────────────────────────────────
+      doc.addPage();
+      drawPageHeader(doc, "Overall Emotional Snapshot", "Final Summary");
+
+      doc
+        .fillColor(MUTED)
+        .fontSize(12)
+        .font("Helvetica")
+        .text("YOUR BALANCE SCORE", 40, 148, { characterSpacing: 1 });
+      doc
+        .fillColor(INDIGO)
+        .fontSize(64)
+        .font("Helvetica-Bold")
+        .text(`${Math.round(overallScore)}%`, 40, 164);
+      doc.y = 244;
+
+      doc
+        .fillColor(SLATE)
+        .fontSize(13)
+        .font("Helvetica-Oblique")
+        .text(`"${aiReport.summary || ""}"`, 40, doc.y, {
+          width: doc.page.width - 80,
+          lineGap: 4,
+        });
+      doc.moveDown(1);
+
+      if (aiReport.strengths?.length > 0) {
+        drawSectionLabel(doc, "Strongest Areas");
+        drawBulletList(doc, aiReport.strengths, "✓", EMERALD);
+        doc.moveDown(0.4);
+      }
+
+      if (aiReport.challenges?.length > 0) {
+        drawSectionLabel(doc, "Growth Areas");
+        drawBulletList(doc, aiReport.challenges, "→", AMBER);
+        doc.moveDown(0.4);
+      }
+
+      if (aiReport.improvementAdvice) {
+        drawSectionLabel(doc, "Recommended Focus Areas");
+        drawAdviceBox(doc, aiReport.improvementAdvice);
+      }
+
+      if (aiReport.actionSteps?.length > 0) {
+        drawSectionLabel(doc, "Global Action Steps");
+        drawActionSteps(doc, aiReport.actionSteps);
+      }
+
+      // Closing note box
+      const noteY = doc.y + 16;
+      doc.rect(40, noteY, doc.page.width - 80, 75).fill(INDIGO);
+      doc
+        .fillColor(WHITE)
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("A Note from Vidyaloop AI", 60, noteY + 12);
+      doc
+        .fillColor("#ffffffd9")
+        .fontSize(11)
+        .font("Helvetica")
+        .text(
+          "Remember, emotional intelligence is a journey, not a destination. These results are a starting point for self-discovery and growth. Keep reflecting, keep learning, and keep growing.",
+          60,
+          noteY + 34,
+          { width: doc.page.width - 120 }
+        );
+
+      drawFooter(doc, userName);
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
   });
-
-  await browser.close();
-  return Buffer.from(pdfBuffer);
 }

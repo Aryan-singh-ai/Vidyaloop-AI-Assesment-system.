@@ -1,31 +1,37 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// Prevent initialization during Vercel's static build step where DATABASE_URL is missing
-const createPrismaClient = () => {
-  if (typeof window === "undefined" && !process.env.DATABASE_URL) {
-    // Return a dummy proxy during build to prevent crashes
+const createPrismaClient = (): PrismaClient => {
+  if (!process.env.DATABASE_URL) {
+    // Return a dummy proxy during the static build phase where DATABASE_URL is absent
     return new Proxy({} as PrismaClient, {
       get() {
         return () => Promise.resolve([]);
-      }
+      },
     });
   }
-  try {
-    return new PrismaClient({ log: ["query"] });
-  } catch (error) {
-    console.warn("Failed to initialize PrismaClient during build phase. Using proxy.");
-    return new Proxy({} as PrismaClient, {
-      get() { return () => Promise.resolve([]); }
-    });
-  }
+
+  // Prisma 7 requires a driver adapter for PostgreSQL
+  // We use a Pool from the 'pg' package for better connection management on Vercel
+  const pool = new Pool({ 
+    connectionString: process.env.DATABASE_URL,
+    max: 10, // Limit connections to prevent pool exhaustion in serverless
+  });
+  
+  const adapter = new PrismaPg(pool);
+  
+  return new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["error"] : ["error"],
+  });
 };
 
+// Cache globally to prevent connection pool exhaustion (critical for serverless/Vercel)
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== "production" && process.env.DATABASE_URL) {
+if (!globalForPrisma.prisma) {
   globalForPrisma.prisma = prisma;
 }
-

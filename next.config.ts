@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
+  serverExternalPackages: ["pdfkit"],
+  outputFileTracingIncludes: {
+    "/api/report/pdf/[id]": [
+      "./node_modules/pdfkit/js/data/**/*",
+      "./node_modules/pdfkit/js/**/*.js",
+    ],
   },
 };
 

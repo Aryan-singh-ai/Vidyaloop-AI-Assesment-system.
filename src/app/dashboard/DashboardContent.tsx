@@ -19,7 +19,13 @@ export default function DashboardContent() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("/api/user/assessments");
+        // Read email from localStorage (set during assessment start)
+        const studentInfoStr = localStorage.getItem("studentInfo");
+        const email = studentInfoStr ? JSON.parse(studentInfoStr).email : null;
+        const url = email
+          ? `/api/user/assessments?email=${encodeURIComponent(email)}`
+          : "/api/user/assessments";
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setHistory(data);
@@ -127,10 +133,29 @@ export default function DashboardContent() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end">
-                          <div className="text-right">
-                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Balance Score</p>
-                            <p className="text-2xl font-black text-primary">{Math.round(report.overallScore)}%</p>
+                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="rounded-xl h-10 w-10 text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const link = document.createElement('a');
+                                link.href = `/api/report/pdf/${report.id}`;
+                                link.download = `Report_${report.id.substring(0, 8)}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
+                              <FileText className="w-5 h-5" />
+                            </Button>
+                            <div className="text-right min-w-[80px]">
+                              <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Balance Score</p>
+                              <p className="text-2xl font-black text-primary">{Math.round(report.overallScore)}%</p>
+                            </div>
                           </div>
                           <ChevronRight className="w-6 h-6 text-muted-foreground" />
                         </div>
