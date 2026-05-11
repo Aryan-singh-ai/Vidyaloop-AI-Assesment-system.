@@ -1,7 +1,7 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
-export const proxy = clerkMiddleware((auth, req) => {
-  console.log('Proxy hit:', req.url);
+export default clerkMiddleware((auth, req) => {
+  console.log('Middleware hit:', req.url);
 });
 
 export const config = {
